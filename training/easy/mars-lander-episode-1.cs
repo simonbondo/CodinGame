@@ -22,6 +22,8 @@ class Player
             int landY = int.Parse(inputs[1]); // Y coordinate of a surface point. By linking all the points together in a sequential fashion, you form the surface of Mars.
         }
 
+        var braking = false;
+
         // game loop
         while (true)
         {
@@ -34,13 +36,18 @@ class Player
             int rotate = int.Parse(inputs[5]); // the rotation angle in degrees (-90 to 90).
             int power = int.Parse(inputs[6]); // the thrust power (0 to 4).
 
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
+            // Only start braking when velocity is greater that 42 to save 300 or more liters of fuel
+            if (!braking && vSpeed < -42)
+                braking = true;
 
-            power = 3;
-            if (vSpeed < -35)
-                power = 4;
-
+            if (braking && vSpeed < -40)
+                power++;
+            else
+                power--;
+            
+            // 0 <= power <= 4
+            power = Math.Max(0, Math.Min(power, 4));
+            
             // 2 integers: rotate power. rotate is the desired rotation angle (should be 0 for level 1), power is the desired thrust power (0 to 4).
             Console.WriteLine($"0 {power}");
         }
