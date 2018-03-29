@@ -19,247 +19,57 @@ class Solution
         var width = int.Parse(inputs[0]);
         var height = int.Parse(inputs[1]);
 
-        var pattern = Enumerable.Range(0, height)
+        inputs = Enumerable.Range(0, height)
             .Select(n => Console.ReadLine())
             .ToArray();
 
         Console.Error.WriteLine($"Folds:{numFolds}, Size: {width}x{height}");
 
-        PrintPattern(pattern);
+        PrintPattern(inputs);
 
-        /*
-        // Get inital areas
-        string[] patternCopy = new string[height];
-        Array.Copy(pattern, patternCopy, height);
-        var initalAreas = DoPhysicalSolution(patternCopy, 0);
-        Console.Error.WriteLine($"Initial areas: {initalAreas}");
-        */
+        long solution = CalculateNumberOfAreas(inputs, numFolds, height, width);
 
-        int solution = 0;
-
-        // Actually unfold and detect areas
-        // Gets slow and memory constrainted with high NumFolds or large Width/Height
-        solution = DoPhysicalSolution(pattern, numFolds);
-
-        // Calculate number of areas based on a ruleset
-        // After all initial pieces has been classified, it should be very fast to calculate how pieces mutate and multiply
-        //solution = DoRuleBasedSolution(pattern, numFolds); 
+        Console.Error.WriteLine($"Solution: {solution}");
 
         Console.WriteLine(solution);
     }
 
-    public static int DoRuleBasedSolution(string[] pattern, int numFolds)
+    public static long CalculateNumberOfAreas(string[] paper, int numFolds, int height, int width)
     {
-        var patterns = new[] {                                                          // After first fold:
-            // Corner points
-            new PatternInfo { Type = "NW", Pattern = new[] { "#..", "...", "..." } },   // --> 1Mi
-            new PatternInfo { Type = "NE", Pattern = new[] { "..#", "...", "..." } },   // --> 1WC + 1EC
-            new PatternInfo { Type = "SW", Pattern = new[] { "...", "...", "#.." } },   // --> 1NC + 1SC
-            new PatternInfo { Type = "SE", Pattern = new[] { "...", "...", "..#" } },   // --> 1NW + 1NE + 1SW + 1SE
-            // Edge points
-            new PatternInfo { Type = "NC", Pattern = new[] { ".#.", "...", "..." } },   // --> 2Mi
-            new PatternInfo { Type = "WC", Pattern = new[] { "...", "#..", "..." } },   // --> 2Mi
-            new PatternInfo { Type = "EC", Pattern = new[] { "...", "..#", "..." } },   // --> 2WC + 2EC
-            new PatternInfo { Type = "SC", Pattern = new[] { "...", "...", ".#." } },   // --> 2NC + 2SC
-            // Middle point
-            new PatternInfo { Type = "Mi", Pattern = new[] { "...", ".#.", "..." } },   // --> 4Mi
-            // Bar patterns
-            new PatternInfo { Type = "No", Pattern = new[] { "###", "...", "..." } },   // --> 1Ho
-            new PatternInfo { Type = "We", Pattern = new[] { "#..", "#..", "#.." } },   // --> 1Ve
-            new PatternInfo { Type = "Ea", Pattern = new[] { "..#", "..#", "..#" } },   // --> 1Ea + 1We
-            new PatternInfo { Type = "So", Pattern = new[] { "...", "...", "###" } },   // --> 1No + 1So
-            new PatternInfo { Type = "Ho", Pattern = new[] { "...", "###", "..." } },   // --> 2Ho
-            new PatternInfo { Type = "Ve", Pattern = new[] { ".#.", ".#.", ".#." } },   // --> 2Ve
-            // All Edges
-            new PatternInfo { Type = "Al", Pattern = new[] { ".#.", "###", ".#." } },   // --> 1Al
+        // Convert input to nodes
+        var nodes = Node.GetNodes(paper, height, width);
 
-            // Test patterns
-            new PatternInfo { Type = "T1", Pattern = new[] { "...", ".##", ".#." } },   // --> 4??
-            new PatternInfo { Type = "T2", Pattern = new[] {
-                ".#.......#.....#...####",
-                "##..#.....####.#.......",
-                "#...###....#...#.###.##",
-                "###........#...#....#.."
-            }}, // Random pattern
-        };
-
-        /*
-        After second fold:
-        NW:  4   1Mi                        -->  4Mi
-        NE:  6   1WC +  1EC                 -->  2WC +  2EC +  2Mi
-        SW:  6   1NC +  1SC                 -->  2NC +  2SC +  2Mi
-        SE:  9   1NW +  1NE +  1SW +  1SE   -->  1NW +  1NE +  1SW +  1SE +  1NC +  1WC +  1EC +  1SC +  1Mi
-
-        NC:  8   2Mi        -->  8Mi
-        WC:  8   2Mi        -->  8Mi
-        EC: 12   2WC +  2EC -->  4WC +  4EC +  4Mi
-        SC: 12   2NC +  2SC -->  4NC +  4SC +  4Mi
-
-        Mi: 16   4Mi    --> 16Mi
-        
-        No:  2   1Ho        -->  2Ho
-        We:  2   1Ve        -->  2Ve
-        Ea:  3   1We +  1Ea -->  1We +  1Ea +  1Ve
-        So:  3   1No +  1So -->  1No +  1So +  1Ho
-        Ho:  4   2Ho        -->  4Ho
-        Ve:  4   2Ve        -->  4Ve
-        AE:  1   1AE        -->  1AE
-        
-        T1:  9   4??    -->  9??
-        */
-        
-        /*
-        After third fold:
-        NW: 16   4Mi                                                            --> 16Mi
-        NE: 20   2Mi +  2EC +  2WC                                              -->  8Mi +  4Mi +  4EC +  4WC
-        SW: 20   2Mi +  2NC +  2SC                                              -->  8Mi +  4Mi +  4NC +  4SC
-        SE: 25   1NW +  1NC +  1NE +  1EC +  1Mi +  1WC +  1SW +  1SC +  1SE    -->  1NW +  3NC +  1NE +  3EC +  9Mi +  3WC +  1SW +  3SC +  1SE
-
-        NC: 32   8Mi                --> 32Mi
-        WC: 40   4Mi +  4EC +  4WC  --> 16Mi +  8Mi +  8EC +  8WC
-        EC: 32   8Mi                --> 32Mi
-        SC: 40   4Mi +  4NC +  4SC  --> 16Mi +  8Mi +  8NC +  8SC
-
-        Mi: 64  16Mi    --> 64Mi
-        */
-
-        foreach (var patternInfo in patterns)
+        // Detect and mark unique areas
+        var areaCount = 0;
+        foreach (var node in nodes)
         {
-            for (int i = 0; i < numFolds; i++)
-            {
-                patternInfo.Pattern = UnfoldSheet(patternInfo.Pattern);
-            }
-            patternInfo.Areas = GetNumAreas(patternInfo.Pattern);
+            if (GetAreaSizeAndFloodfill(nodes, node, areaCount) > 0)
+                areaCount++;
         }
 
-        return 0;
-    }
+        // Detect pattern types
+        var areaPatterns = AreaPatterns.DetectPatterns(nodes, height, width);
 
-    static int GetNumAreas(string[] pattern)
-    {
-        var numAreas = 0;
-        for (int row = 0; row < pattern.Length; row++)
-        {
-            var cols = pattern[row].Length;
-            for (int col = 0; col < cols; col++)
-            {
-                if (FloodFill(pattern, row, col, '#', (numAreas + 1).ToString().ToCharArray().Last()) > 0)
-                    numAreas++;
-            }
-        }
-        return numAreas;
-    }
-
-    public static int FloodFill(string[] pattern, int row, int col, char target, char replacement)
-    {
-        if (target == replacement)
-            return 0;
-        if (row < 0 || row >= pattern.Length || col < 0 || col >= pattern[row].Length)
-            return 0;
-
-        var node = pattern[row][col];
-        if (node != target)
-            return 0;
-
-        pattern[row] = $"{pattern[row].Remove(col)}{replacement}{pattern[row].Substring(col + 1)}";
-        // Repeat for cell to left + up + right + down
-        return 1 +
-            FloodFill(pattern, row, col - 1, target, replacement) +
-            FloodFill(pattern, row - 1, col, target, replacement) +
-            FloodFill(pattern, row, col + 1, target, replacement) +
-            FloodFill(pattern, row + 1, col, target, replacement);
-    }
-
-    public static int DoPhysicalSolution(string[] pattern, int numFolds)
-    {
-        var height = pattern.Length;
-        var width = pattern[0].Length;
-        var sheet = new bool[height, width];
-        for (int row = 0; row < height; row++)
-        {
-            var line = pattern[row];
-            for (int col = 0; col < width; col++)
-            {
-                sheet[row, col] = line[col] == '#';
-            }
-        }
-
+        // Unfold patterns
         for (int i = 0; i < numFolds; i++)
         {
-            sheet = Unfold(sheet, height, width);
-            height *= 2;
-            width *= 2;
+            areaPatterns.UnfoldPatterns();
         }
 
-        var minAreaSize = 1;
-        var numAreas = 0;
-        for (int r = 0; r < height; r++)
-        {
-            for (int c = 0; c < width; c++)
-            {
-                if (sheet[r, c] == true)
-                {
-                    if (GetAreaSizeAndFill(sheet, height, width, r, c) >= minAreaSize)
-                        numAreas++;
-                }
-            }
-        }
- 
-        return numAreas;
+        return areaPatterns.GetTotalAreas();
     }
 
-    public static int GetAreaSizeAndFill(bool[,] sheet, int height, int width, int r, int c)
+    public static int GetAreaSizeAndFloodfill(Node[] nodes, Node node, int areaId)
     {
-        if (r < 0 || r >= height || c < 0 || c >= width || sheet[r, c] == false)
+        if (node == null || node.AreaId.HasValue)
             return 0;
-        
-        sheet[r, c] = false;
+
+        node.AreaId = areaId;
         return 1 +
-            GetAreaSizeAndFill(sheet, height, width, r, c - 1) +
-            GetAreaSizeAndFill(sheet, height, width, r, c + 1) +
-            GetAreaSizeAndFill(sheet, height, width, r - 1, c) +
-            GetAreaSizeAndFill(sheet, height, width, r + 1, c);
-    }
-    
-    static string[] UnfoldSheet(string[] sheet)
-    {
-        var h = sheet.Length;
-        var w = sheet[0].Length;
-        // WTF... out of memory ?!
-        var unfoldedSheet = new string[h * 2];
-        
-        for (var r = 0; r < h; r++)
-        {
-            var row = sheet[r];
-            var reverseRow = new string(row.ToCharArray().Reverse().ToArray());
-            var newRow = reverseRow + row;
-            
-            unfoldedSheet[h + r] = newRow;
-            unfoldedSheet[h - r - 1] = newRow;
-        }
-        
-        return unfoldedSheet;
-    }
-
-    static bool[,] Unfold(bool[,] sheet, int height, int width)
-    {
-        var newHeight = height * 2;
-        var newWidth = width * 2;
-        // WTF... out of memory ?!
-        var unfolded = new bool[newHeight, newWidth];
-
-        for (int row = 0; row < height; row++)
-        {
-            for (int col = 0; col < width; col++)
-            {
-                var val = sheet[row, col];
-                unfolded[height + row, width + col] = val;
-                unfolded[height - row - 1, width + col] = val;
-                unfolded[height + row, width - col - 1] = val;
-                unfolded[height - row - 1, width - col - 1] = val;
-            }
-        }
-        return unfolded;
+            GetAreaSizeAndFloodfill(nodes, node.GetNodeNorth(nodes), areaId) +
+            GetAreaSizeAndFloodfill(nodes, node.GetNodeWest(nodes), areaId) +
+            GetAreaSizeAndFloodfill(nodes, node.GetNodeEast(nodes), areaId) +
+            GetAreaSizeAndFloodfill(nodes, node.GetNodeSouth(nodes), areaId);
     }
 
     static void PrintPattern(string[] pattern)
@@ -273,9 +83,227 @@ class Solution
     }
 }
 
-public class PatternInfo
+public class Node
 {
-    public string Type { get; set; }
-    public string[] Pattern { get; set; }
-    public int Areas { get; set; }
+    private Node nodeNorth = null;
+    private Node nodeWest = null;
+    private Node nodeEast = null;
+    private Node nodeSouth = null;
+    
+    public int Row { get; set; }
+    public int Column { get; set; }
+    public bool HasNodeNorth { get; set; }
+    public bool HasNodeWest { get; set; }
+    public bool HasNodeEast { get; set; }
+    public bool HasNodeSouth { get; set; }
+    
+    public int? AreaId { get; set; }
+    
+    public Node GetNodeNorth(Node[] nodes)
+    {
+        if (!this.HasNodeNorth)
+            return null;
+        
+        return this.nodeNorth = nodes
+            .SingleOrDefault(n => n.Row == this.Row - 1 && n.Column == this.Column);
+    }
+    
+    public Node GetNodeWest(Node[] nodes)
+    {
+        if (!this.HasNodeNorth)
+            return null;
+        
+        return this.nodeWest = nodes
+            .SingleOrDefault(n => n.Row == this.Row && n.Column == this.Column - 1);
+    }
+    
+    public Node GetNodeEast(Node[] nodes)
+    {
+        if (!this.HasNodeEast)
+            return null;
+        
+        return this.nodeEast = nodes
+            .SingleOrDefault(n => n.Row == this.Row && n.Column == this.Column + 1);
+    }
+    
+    public Node GetNodeSouth(Node[] nodes)
+    {
+        if (!this.HasNodeSouth)
+            return null;
+        
+        return this.nodeSouth = nodes
+            .SingleOrDefault(n => n.Row == this.Row + 1 && n.Column == this.Column);
+    }
+
+    public static Node[] GetNodes(string[] sheet, int height, int width)
+    {
+        Func<int, int, bool> isPaper = (r, c) => sheet[r][c] == '#';
+
+        var nodes = Enumerable.Range(0, height)
+            .SelectMany(r => Enumerable.Range(0, width)
+                .Where(c => isPaper(r, c))
+                .Select(c => new Node
+                {
+                    Row = r,
+                    Column = c,
+                    HasNodeNorth = r <= 0 ? false : isPaper(r - 1, c),
+                    HasNodeWest = c <= 0 ? false : isPaper(r, c - 1),
+                    HasNodeEast = c >= width - 1 ? false : isPaper(r, c + 1),
+                    HasNodeSouth = r >= height - 1 ? false : isPaper(r + 1, c),
+                    AreaId = null
+                }))
+            .ToArray();
+
+        return nodes;
+    }
+}
+
+public class AreaPatterns
+{
+    // Touching one edge
+    public long North = 0;
+    public long West = 0;
+    public long East = 0;
+    public long South = 0;
+    
+    // Touching two adjacent edges
+    public long NorthWest = 0;
+    public long NorthEast = 0;
+    public long SouthWest = 0;
+    public long SouthEast = 0;
+    
+    // Touching two opposite edges
+    public long NorthSouth = 0;
+    public long WestEast = 0;
+    
+    // Touching three edges
+    public long NorthWestEast = 0;
+    public long NorthSouthWest = 0;
+    public long NorthSouthEast = 0;
+    public long SouthWestEast = 0;
+
+    // Touching four edges
+    public long All = 0;
+    
+    // Touching no edges
+    public long None = 0;
+    
+    public void UnfoldPatterns()
+    {
+        var newNorth = 2 * this.South + this.SouthWest;
+        var newWest = 2 * this.East + this.NorthEast;
+        var newEast = 2 * this.East + this.NorthEast;
+        var newSouth = 2 * this.South + this.SouthWest;
+        var newNorthWest = this.SouthEast;
+        var newNorthEast = this.SouthEast;
+        var newSouthWest = this.SouthEast;
+        var newSouthEast = this.SouthEast;
+        var newNorthSouth = 2 * this.NorthSouth + this.NorthSouthWest;
+        var newWestEast = 2 * this.WestEast + this.NorthWestEast;
+        var newNorthWestEast = this.SouthWestEast;
+        var newNorthSouthWest = this.NorthSouthEast;
+        var newNorthSouthEast = this.NorthSouthEast;
+        var newSouthWestEast = this.SouthWestEast;
+        var newAll = this.All;
+        var newNone = 2 * this.North + 2 * this.West + this.NorthWest + 4 * this.None;
+        
+        this.North = newNorth;
+        this.West = newWest;
+        this.East = newEast;
+        this.South = newSouth;
+        this.NorthWest = newNorthWest;
+        this.NorthEast = newNorthEast;
+        this.SouthWest = newSouthWest;
+        this.SouthEast = newSouthEast;
+        this.NorthSouth = newNorthSouth;
+        this.WestEast = newWestEast;
+        this.NorthWestEast = newNorthWestEast;
+        this.NorthSouthWest = newNorthSouthWest;
+        this.NorthSouthEast = newNorthSouthEast;
+        this.SouthWestEast = newSouthWestEast;
+        this.All = newAll;
+        this.None = newNone;
+    }
+
+    public long GetTotalAreas()
+    {
+        return this.North +
+            this.West +
+            this.East +
+            this.South +
+            this.NorthWest +
+            this.NorthEast +
+            this.SouthWest +
+            this.SouthEast +
+            this.NorthSouth +
+            this.WestEast +
+            this.NorthWestEast +
+            this.NorthSouthWest +
+            this.NorthSouthEast +
+            this.SouthWestEast +
+            this.All +
+            this.None;
+    }
+
+    public static AreaPatterns DetectPatterns(Node[] nodes, int height, int width)
+    {
+        // Group nodes by area
+        var areaNodes = nodes
+            .GroupBy(n => n.AreaId)
+            .ToArray();
+
+        var patterns = new AreaPatterns();
+        foreach (var area in areaNodes)
+        {
+            // Detect which edges are touched by current area
+            var touchingNorth = area.Any(n => n.Row == 0);
+            var touchingWest = area.Any(n => n.Column == 0);
+            var touchingEast = area.Any(n => n.Column == width - 1);
+            var touchingSouth = area.Any(n => n.Row == height - 1);
+
+            // Four edges
+            if (!touchingNorth && !touchingWest && !touchingEast && !touchingSouth)
+                patterns.None++;
+            else if (touchingNorth && touchingWest && touchingEast && touchingSouth)
+                patterns.All++;
+            // Three edges
+            else if (touchingNorth && touchingWest && touchingEast)
+                patterns.NorthWestEast++;
+            else if (touchingNorth && touchingSouth && touchingWest)
+                patterns.NorthSouthWest++;
+            else if (touchingNorth && touchingSouth && touchingEast)
+                patterns.NorthSouthEast++;
+            else if (touchingSouth && touchingWest && touchingEast)
+                patterns.SouthWestEast++;
+            // Two opposite edges
+            else if (touchingNorth && touchingSouth)
+                patterns.NorthSouth++;
+            else if (touchingWest && touchingEast)
+                patterns.WestEast++;
+            // Two adjacent edges
+            else if (touchingNorth && touchingWest)
+                patterns.NorthWest++;
+            else if (touchingNorth && touchingEast)
+                patterns.NorthEast++;
+            else if (touchingSouth && touchingWest)
+                patterns.SouthWest++;
+            else if (touchingSouth && touchingEast)
+                patterns.SouthEast++;
+            // One edge
+            else if (touchingNorth)
+                patterns.North++;
+            else if (touchingWest)
+                patterns.West++;
+            else if (touchingEast)
+                patterns.East++;
+            else if (touchingSouth)
+                patterns.South++;
+            else
+            {
+                throw new NotImplementedException($"Pattern not implemented. Area:{area.Key} n:{touchingNorth} w:{touchingWest} e:{touchingEast} s:{touchingSouth}");
+            }
+        }
+        
+        return patterns;
+    }
 }
