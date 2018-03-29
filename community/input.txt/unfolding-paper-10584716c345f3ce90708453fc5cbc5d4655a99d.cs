@@ -1,10 +1,6 @@
 using System;
 using System.Linq;
-using System.IO;
-using System.Text;
 using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -110,7 +106,7 @@ public class Node
     
     public Node GetNodeWest(Node[] nodes)
     {
-        if (!this.HasNodeNorth)
+        if (!this.HasNodeWest)
             return null;
         
         return this.nodeWest = nodes
