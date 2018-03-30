@@ -1,9 +1,5 @@
 using System;
 using System.Linq;
-using System.IO;
-using System.Text;
-using System.Collections;
-using System.Collections.Generic;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -13,15 +9,20 @@ class Solution
 {
     static void Main(string[] args)
     {
-        int N = int.Parse(Console.ReadLine());
-        for (int i = 0; i < N; i++)
-        {
-            int pi = int.Parse(Console.ReadLine());
-        }
+        // 1 < numHorses < 100000
+        int numHorses = int.Parse(Console.ReadLine());
 
-        // Write an action using Console.WriteLine()
-        // To debug: Console.Error.WriteLine("Debug messages...");
+        // 0 < strength <= 10000000
+        var horseStrengths = Enumerable.Range(0, numHorses)
+            .Select(i => int.Parse(Console.ReadLine()))
+            .OrderBy(s => s)
+            .ToArray();
+        
+        var difference = horseStrengths
+            .Zip(horseStrengths.Skip(1), (a, b) => b - a)
+            .Min();
 
-        Console.WriteLine("answer");
+        Console.Error.WriteLine($"numHorses: {numHorses}");
+        Console.WriteLine(difference);
     }
 }
