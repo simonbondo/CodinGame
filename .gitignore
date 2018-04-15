@@ -1,3 +1,4 @@
 obj/
 bin/
 /CurrentPuzzle.cs
+.vscode/
